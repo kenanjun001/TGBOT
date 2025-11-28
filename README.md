@@ -22,24 +22,6 @@
 
 ---
 
-## 📸 界面预览
-
-<details>
-<summary>点击展开截图</summary>
-
-### 管理后台仪表盘
-![Dashboard](docs/images/dashboard.png)
-
-### 对话界面
-![Chat](docs/images/chat.png)
-
-### Web 客服页面
-![Web Chat](docs/images/web-chat.png)
-
-</details>
-
----
-
 ## ✨ 功能特性
 
 ### 🎯 核心功能
@@ -47,10 +29,11 @@
 | 功能 | 描述 |
 |------|------|
 | **双入口客服** | Telegram 机器人 + Web 客服页面，客户可自由选择 |
-| **多管理员** | 支持多个管理员同时在线，消息同步推送 |
+| **多管理员** | 支持多个客服同时在线，消息同步推送，显示回复客服名称 |
 | **人机验证** | 防止垃圾消息，支持算术题/按钮验证 |
 | **实时对话** | Web 管理后台实时显示消息，无需刷新 |
 | **消息记录** | 完整保存所有对话历史，支持搜索导出 |
+| **客户评分** | 客户可结束会话并评分，便于服务质量统计 |
 
 ### 🛡️ 安全功能
 
@@ -58,6 +41,7 @@
 - ✅ 用户黑名单/白名单管理
 - ✅ 验证失败自动临时封禁
 - ✅ 操作日志完整记录
+- ✅ 自动过滤机器人命令
 
 ### 📊 数据统计
 
@@ -72,6 +56,7 @@
 - 💬 类微信/WhatsApp 的对话界面
 - 📱 完美支持移动端
 - 🌙 静音时段设置
+- ⚡ 快捷回复模板
 
 ---
 
@@ -99,8 +84,8 @@
               ┌───────────────┴───────────────┐
               ▼                               ▼
 ┌─────────────────────────┐     ┌─────────────────────────┐
-│      管理员 A (TG)       │     │      管理员 B (TG)       │
-│   收到消息推送，可回复    │     │   收到消息推送，可回复    │
+│    客服小王 (Telegram)   │     │    客服小李 (Telegram)   │
+│   收到消息推送，直接回复  │     │   收到消息推送，直接回复  │
 └─────────────────────────┘     └─────────────────────────┘
 ```
 
@@ -118,8 +103,8 @@
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/yourusername/tg-relay-bot.git
-cd tg-relay-bot
+git clone https://github.com/kenanjun001/TGBOT.git
+cd TGBOT
 
 # 2. 运行安装脚本
 chmod +x install.sh
@@ -132,8 +117,8 @@ chmod +x install.sh
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/yourusername/tg-relay-bot.git
-cd tg-relay-bot
+git clone https://github.com/kenanjun001/TGBOT.git
+cd TGBOT
 
 # 2. 创建配置文件
 cp .env.example .env
@@ -191,25 +176,25 @@ MAX_VERIFICATION_FAILS=3
 - 管理后台：`http://你的服务器IP:8080`
 - Web 客服页面：`http://你的服务器IP:8080/chat`
 
-### 5️⃣ 管理员命令
+### 5️⃣ 客服回复方式
 
-在 Telegram 中可使用以下命令：
+| 消息来源 | 回复方式 |
+|---------|---------|
+| TG 用户 | 直接回复转发的消息 |
+| Web 用户 | 直接回复转发的消息 |
+
+所有消息都可以直接在 Telegram 中右键回复，无需使用命令！
+
+### 6️⃣ 管理员命令
 
 | 命令 | 说明 |
 |------|------|
 | `/start` | 开始使用 |
 | `/help` | 查看帮助 |
 | `/stats` | 查看今日统计 |
-| `/r <用户ID> <消息>` | 回复用户（支持 TG 和 Web 用户） |
 | `/block <用户ID>` | 拉黑用户 |
 | `/unblock <用户ID>` | 解除拉黑 |
 | `/whitelist <用户ID>` | 添加白名单 |
-| `/broadcast <消息>` | 群发消息 |
-
-**回复消息的两种方式：**
-
-- **TG 用户**：直接回复转发的消息
-- **Web 用户**：使用 `/r <ID> <消息>` 命令
 
 ---
 
@@ -226,13 +211,6 @@ MAX_VERIFICATION_FAILS=3
 | `WEB_PORT` | Web 端口 | 8080 |
 | `WEB_ADMIN_USERNAME` | 后台用户名 | admin |
 | `WEB_ADMIN_PASSWORD` | 后台密码 | admin |
-| `VERIFICATION_TYPE` | 验证类型 | button |
-| `VERIFICATION_TIMEOUT` | 验证超时(秒) | 60 |
-| `MAX_VERIFICATION_FAILS` | 最大失败次数 | 3 |
-| `TEMP_BAN_DURATION` | 临时封禁时长(秒) | 3600 |
-| `ENABLE_QUIET_HOURS` | 启用静音时段 | false |
-| `QUIET_HOURS_START` | 静音开始时间 | 23 |
-| `QUIET_HOURS_END` | 静音结束时间 | 7 |
 
 ### 数据库配置
 
@@ -250,7 +228,7 @@ MYSQL_PASSWORD=password
 MYSQL_DATABASE=tg_bot
 ```
 
-使用 MySQL 的 docker-compose：
+使用 MySQL：
 ```bash
 docker compose -f docker-compose.mysql.yml up -d
 ```
@@ -269,65 +247,12 @@ POSTGRES_PASSWORD=password
 POSTGRES_DATABASE=tg_bot
 ```
 
-使用 PostgreSQL 的 docker-compose：
+使用 PostgreSQL：
 ```bash
 docker compose -f docker-compose.postgres.yml up -d
 ```
 
 </details>
-
----
-
-## 🌟 功能亮点
-
-### 对比其他方案
-
-| 功能 | 本项目 | LiveChat | Crisp | Tawk.to |
-|------|:------:|:--------:|:-----:|:-------:|
-| 免费使用 | ✅ | ❌ | 部分 | ✅ |
-| 自托管 | ✅ | ❌ | ❌ | ❌ |
-| Telegram 集成 | ✅ | ❌ | 插件 | ❌ |
-| Web 客服页面 | ✅ | ✅ | ✅ | ✅ |
-| 多管理员 | ✅ | 付费 | 付费 | ✅ |
-| 人机验证 | ✅ | ❌ | ❌ | ❌ |
-| 敏感词过滤 | ✅ | ❌ | ❌ | ❌ |
-| 数据完全掌控 | ✅ | ❌ | ❌ | ❌ |
-| 中文支持 | ✅ | 部分 | 部分 | 部分 |
-
-### 为什么选择我们？
-
-1. **🆓 完全免费开源** - 无任何隐藏费用
-2. **🔒 数据自主可控** - 所有数据存储在您自己的服务器
-3. **📱 Telegram 原生体验** - 管理员在 TG 中即可回复
-4. **🌐 无需安装** - 客户通过网页即可联系您
-5. **⚡ 轻量高效** - Docker 一键部署，资源占用低
-6. **🛡️ 安全可靠** - 人机验证 + 敏感词过滤
-
----
-
-## 📁 项目结构
-
-```
-tg-relay-bot/
-├── app/
-│   ├── bot/                 # Telegram 机器人
-│   │   ├── handlers.py      # 消息处理器
-│   │   ├── verification.py  # 人机验证
-│   │   └── middlewares.py   # 中间件
-│   ├── web/                 # Web 管理后台
-│   │   ├── routes/          # API 路由
-│   │   ├── templates/       # 页面模板
-│   │   └── static/          # 静态资源
-│   ├── services/            # 业务服务
-│   ├── database/            # 数据库模型
-│   ├── config.py            # 配置管理
-│   └── main.py              # 主入口
-├── docker-compose.yml       # Docker 配置
-├── Dockerfile               # Docker 镜像
-├── requirements.txt         # Python 依赖
-├── install.sh               # 安装脚本
-└── .env.example             # 配置示例
-```
 
 ---
 
@@ -346,7 +271,9 @@ docker compose logs -f
 # 重启服务
 docker compose restart
 
-# 重新构建
+# 更新版本
+docker compose down
+git pull
 docker compose up -d --build
 
 # 备份数据
@@ -358,11 +285,16 @@ cp -r data/ data_backup_$(date +%Y%m%d)/
 ## ❓ 常见问题
 
 <details>
-<summary><b>Q: 如何修改管理员？</b></summary>
+<summary><b>Q: 如何添加客服人员？</b></summary>
 
-方法一：在 Web 管理后台 → 设置 → 管理员管理 中添加/删除
+在 Web 管理后台 → 设置 → 管理员管理 中添加，输入客服的 Telegram ID 和备注名即可。
 
-方法二：修改 `.env` 文件中的 `ADMIN_IDS`，然后重启服务
+</details>
+
+<details>
+<summary><b>Q: 如何修改机器人 Token？</b></summary>
+
+在 Web 管理后台 → 设置 → 机器人设置 中可以直接修改 Token 并重启。
 
 </details>
 
@@ -390,47 +322,15 @@ server {
 </details>
 
 <details>
-<summary><b>Q: 如何备份数据？</b></summary>
-
-SQLite 数据存储在 `data/` 目录，直接备份该目录即可：
-
-```bash
-cp -r data/ backup/
-```
-
-</details>
-
-<details>
 <summary><b>Q: Web 客服页面可以嵌入到其他网站吗？</b></summary>
 
 可以使用 iframe 嵌入：
 
 ```html
-<iframe src="http://your-server:8080/chat" width="400" height="600"></iframe>
+<iframe src="https://your-domain.com/chat" width="400" height="600"></iframe>
 ```
 
 </details>
-
-<details>
-<summary><b>Q: 如何查看用户的 ID？</b></summary>
-
-在 Web 管理后台 → 用户管理 中可以看到每个用户的 ID
-
-Web 客服消息推送时也会显示用户 ID：`[ID:123]`
-
-</details>
-
----
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 提交 Pull Request
 
 ---
 
@@ -440,12 +340,6 @@ Web 客服消息推送时也会显示用户 ID：`[ID:123]`
 
 ---
 
-## ⭐ Star History
-
-如果这个项目对您有帮助，请给一个 Star ⭐
-
----
-
 <p align="center">
-  Made with ❤️ 
+  Made with ❤️ by <a href="https://github.com/kenanjun001">kenanjun001</a>
 </p>
