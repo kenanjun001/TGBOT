@@ -1,0 +1,468 @@
+{% extends "base.html" %}
+
+{% block title %}设置 - TG 传话机器人{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">系统设置</h2>
+    
+    <!-- 设置导航 -->
+    <div class="bg-white rounded-xl shadow mb-6">
+        <div class="flex border-b">
+            <a href="/settings" class="px-6 py-3 border-b-2 border-indigo-600 text-indigo-600 font-medium">
+                <i class="ri-settings-3-line mr-2"></i>基础设置
+            </a>
+            <a href="/settings/sensitive" class="px-6 py-3 text-gray-500 hover:text-gray-700">
+                <i class="ri-spam-line mr-2"></i>敏感词管理
+            </a>
+            <a href="/settings/logs" class="px-6 py-3 text-gray-500 hover:text-gray-700">
+                <i class="ri-file-list-line mr-2"></i>操作日志
+            </a>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 管理员管理 -->
+        <div class="bg-white rounded-xl shadow p-6 lg:col-span-2">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">
+                    <i class="ri-admin-line mr-2 text-purple-600"></i>管理员管理
+                </h3>
+                <button onclick="showAddAdminModal()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">
+                    <i class="ri-add-line mr-1"></i>添加管理员
+                </button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full" id="adminTable">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">TG ID</th>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">备注名</th>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">状态</th>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">接收消息</th>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">可回复</th>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-500">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y" id="adminList">
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-400">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 验证设置 -->
+        <div class="bg-white rounded-xl shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                <i class="ri-shield-check-line mr-2 text-indigo-600"></i>验证设置
+            </h3>
+            <form method="POST" action="/settings/verification" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">验证方式</label>
+                    <select name="verification_type" class="w-full px-4 py-2 border rounded-lg">
+                        <option value="math" {% if settings.get('verification_type', 'math') == 'math' %}selected{% endif %}>算术题验证</option>
+                        <option value="button" {% if settings.get('verification_type') == 'button' %}selected{% endif %}>按钮点击验证</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">验证超时时间（秒）</label>
+                    <input type="number" name="verification_timeout" 
+                           value="{{ settings.get('verification_timeout', '60') }}"
+                           class="w-full px-4 py-2 border rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">最大验证失败次数</label>
+                    <input type="number" name="max_fails" 
+                           value="{{ settings.get('max_verification_fails', '3') }}"
+                           class="w-full px-4 py-2 border rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">临时封禁时长（秒）</label>
+                    <input type="number" name="temp_ban_duration" 
+                           value="{{ settings.get('temp_ban_duration', '3600') }}"
+                           class="w-full px-4 py-2 border rounded-lg">
+                </div>
+                <button type="submit" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                    保存验证设置
+                </button>
+            </form>
+        </div>
+        
+        <!-- 消息设置 -->
+        <div class="bg-white rounded-xl shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                <i class="ri-message-3-line mr-2 text-green-600"></i>消息设置
+            </h3>
+            <form method="POST" action="/settings/messages" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">欢迎消息</label>
+                    <textarea name="welcome_message" rows="3"
+                              class="w-full px-4 py-2 border rounded-lg"
+                              placeholder="用户验证通过后显示的欢迎消息">{{ settings.get('welcome_message', '') }}</textarea>
+                </div>
+                <div>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="auto_reply_enabled" value="true"
+                               {% if settings.get('auto_reply_enabled') == 'true' %}checked{% endif %}
+                               class="mr-2">
+                        <span class="text-sm text-gray-600">启用自动回复</span>
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">自动回复内容</label>
+                    <textarea name="auto_reply_message" rows="3"
+                              class="w-full px-4 py-2 border rounded-lg"
+                              placeholder="离线时自动回复的消息">{{ settings.get('auto_reply_message', '') }}</textarea>
+                </div>
+                <button type="submit" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                    保存消息设置
+                </button>
+            </form>
+        </div>
+        
+        <!-- 客服页面设置 -->
+        <div class="bg-white rounded-xl shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                <i class="ri-customer-service-2-line mr-2 text-blue-600"></i>Web客服页面
+            </h3>
+            <div class="space-y-4">
+                <div class="p-4 bg-blue-50 rounded-lg">
+                    <p class="text-sm text-blue-800 mb-2">客服页面地址：</p>
+                    <code class="block p-2 bg-white rounded text-sm break-all" id="chatUrl"></code>
+                </div>
+                <p class="text-sm text-gray-500">
+                    客户可以通过此页面直接与您联系，无需 Telegram。
+                    消息会同时发送到所有管理员的 Telegram。
+                </p>
+            </div>
+        </div>
+        
+        <!-- 机器人设置 -->
+        <div class="bg-white rounded-xl shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                <i class="ri-robot-line mr-2 text-purple-600"></i>机器人设置
+            </h3>
+            <form method="POST" action="/settings/bot" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">Bot Token</label>
+                    <div class="relative">
+                        <input type="password" name="bot_token" id="botTokenInput"
+                               value="{{ bot_token_masked }}"
+                               placeholder="输入新的 Bot Token"
+                               class="w-full px-4 py-2 border rounded-lg pr-10">
+                        <button type="button" onclick="toggleTokenVisibility()" 
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <i class="ri-eye-line" id="tokenEyeIcon"></i>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">从 @BotFather 获取的 Token</p>
+                </div>
+                <div class="p-3 bg-yellow-50 rounded-lg">
+                    <p class="text-sm text-yellow-800">
+                        <i class="ri-alert-line mr-1"></i>
+                        修改 Token 后需要重启服务才能生效
+                    </p>
+                </div>
+                <button type="submit" class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    保存并重启机器人
+                </button>
+            </form>
+            
+            <!-- 机器人状态 -->
+            <div class="mt-4 pt-4 border-t">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">机器人状态</span>
+                    <span id="botStatusBadge" class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-500">检测中...</span>
+                </div>
+                <div id="botInfo" class="mt-2 text-sm text-gray-500"></div>
+            </div>
+        </div>
+        
+        <!-- 通知设置 -->
+        <div class="bg-white rounded-xl shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                <i class="ri-notification-line mr-2 text-yellow-600"></i>通知设置
+            </h3>
+            <form method="POST" action="/settings/notification" class="space-y-4">
+                <div>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="quiet_hours_enabled" value="true"
+                               {% if settings.get('quiet_hours_enabled') == 'true' %}checked{% endif %}
+                               class="mr-2">
+                        <span class="text-sm text-gray-600">启用静音时段</span>
+                    </label>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">静音开始（小时）</label>
+                        <input type="number" name="quiet_hours_start" min="0" max="23"
+                               value="{{ settings.get('quiet_hours_start', '23') }}"
+                               class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">静音结束（小时）</label>
+                        <input type="number" name="quiet_hours_end" min="0" max="23"
+                               value="{{ settings.get('quiet_hours_end', '7') }}"
+                               class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                </div>
+                <button type="submit" class="w-full px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">
+                    保存通知设置
+                </button>
+            </form>
+        </div>
+        
+        <!-- 系统信息 -->
+        <div class="bg-white rounded-xl shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                <i class="ri-information-line mr-2 text-gray-600"></i>系统信息
+            </h3>
+            <div class="space-y-3">
+                <div class="flex justify-between py-2 border-b">
+                    <span class="text-gray-500">机器人 Token</span>
+                    <span class="font-mono text-sm">{{ env_settings.bot_token }}</span>
+                </div>
+                <div class="flex justify-between py-2 border-b">
+                    <span class="text-gray-500">数据库类型</span>
+                    <span class="font-mono text-sm">{{ env_settings.db_type }}</span>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-500">机器人状态</span>
+                    <span id="botStatus" class="text-gray-400">检测中...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加管理员弹窗 -->
+<div id="addAdminModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">添加管理员</h3>
+        <form onsubmit="addAdmin(event)" class="space-y-4">
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">Telegram ID</label>
+                <input type="number" id="newAdminTgId" required
+                       class="w-full px-4 py-2 border rounded-lg"
+                       placeholder="输入管理员的 TG ID">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">备注名（可选）</label>
+                <input type="text" id="newAdminName"
+                       class="w-full px-4 py-2 border rounded-lg"
+                       placeholder="如：客服小王">
+            </div>
+            <div class="flex space-x-3">
+                <button type="button" onclick="hideAddAdminModal()"
+                        class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">
+                    取消
+                </button>
+                <button type="submit"
+                        class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    添加
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 设置客服页面URL
+document.getElementById('chatUrl').textContent = window.location.origin + '/chat';
+
+// 加载管理员列表
+async function loadAdmins() {
+    try {
+        const response = await fetch('/api/admins');
+        const data = await response.json();
+        
+        const tbody = document.getElementById('adminList');
+        if (data.admins.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">暂无管理员</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = data.admins.map(admin => `
+            <tr>
+                <td class="px-4 py-3 font-mono">${admin.tg_id}</td>
+                <td class="px-4 py-3">
+                    ${admin.name || '-'}
+                    ${admin.is_super ? '<span class="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-600 rounded text-xs">超级管理员</span>' : ''}
+                </td>
+                <td class="px-4 py-3">
+                    <span class="px-2 py-1 ${admin.is_active ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'} rounded-full text-xs">
+                        ${admin.is_active ? '启用' : '禁用'}
+                    </span>
+                </td>
+                <td class="px-4 py-3">
+                    <input type="checkbox" ${admin.receive_messages ? 'checked' : ''} 
+                           onchange="updateAdmin(${admin.id}, {receive_messages: this.checked})"
+                           class="rounded">
+                </td>
+                <td class="px-4 py-3">
+                    <input type="checkbox" ${admin.can_reply ? 'checked' : ''} 
+                           onchange="updateAdmin(${admin.id}, {can_reply: this.checked})"
+                           class="rounded">
+                </td>
+                <td class="px-4 py-3">
+                    ${admin.is_super ? '' : `<button onclick="deleteAdmin(${admin.id})" class="text-red-600 hover:text-red-800 text-sm">删除</button>`}
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('加载管理员失败', e);
+    }
+}
+
+// 显示添加管理员弹窗
+function showAddAdminModal() {
+    document.getElementById('addAdminModal').classList.remove('hidden');
+    document.getElementById('addAdminModal').classList.add('flex');
+}
+
+// 隐藏添加管理员弹窗
+function hideAddAdminModal() {
+    document.getElementById('addAdminModal').classList.add('hidden');
+    document.getElementById('addAdminModal').classList.remove('flex');
+    document.getElementById('newAdminTgId').value = '';
+    document.getElementById('newAdminName').value = '';
+}
+
+// 添加管理员
+async function addAdmin(e) {
+    e.preventDefault();
+    
+    const tgId = document.getElementById('newAdminTgId').value;
+    const name = document.getElementById('newAdminName').value;
+    
+    try {
+        const response = await fetch('/api/admins', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tg_id: parseInt(tgId), name: name || null })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            alert(data.detail || '添加失败');
+            return;
+        }
+        
+        hideAddAdminModal();
+        loadAdmins();
+    } catch (e) {
+        alert('添加失败：' + e.message);
+    }
+}
+
+// 更新管理员
+async function updateAdmin(id, data) {
+    try {
+        const response = await fetch(`/api/admins/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const result = await response.json();
+            alert(result.detail || '更新失败');
+            loadAdmins();
+        }
+    } catch (e) {
+        alert('更新失败：' + e.message);
+        loadAdmins();
+    }
+}
+
+// 删除管理员
+async function deleteAdmin(id) {
+    if (!confirm('确定要删除这个管理员吗？')) return;
+    
+    try {
+        const response = await fetch(`/api/admins/${id}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            const data = await response.json();
+            alert(data.detail || '删除失败');
+            return;
+        }
+        
+        loadAdmins();
+    } catch (e) {
+        alert('删除失败：' + e.message);
+    }
+}
+
+// 检查机器人状态
+async function checkBotStatus() {
+    try {
+        const response = await fetch('/api/bot/status');
+        const data = await response.json();
+        const statusBadge = document.getElementById('botStatusBadge');
+        const botInfo = document.getElementById('botInfo');
+        const statusEl = document.getElementById('botStatus');
+        
+        if (data.running) {
+            if (statusBadge) {
+                statusBadge.className = 'px-2 py-1 text-xs rounded-full bg-green-100 text-green-700';
+                statusBadge.textContent = '运行中';
+            }
+            if (botInfo) {
+                botInfo.innerHTML = `<i class="ri-robot-line mr-1"></i>@${data.bot_username}`;
+            }
+            if (statusEl) {
+                statusEl.innerHTML = '<span class="text-green-500"><i class="ri-checkbox-circle-line mr-1"></i>运行中 (@' + data.bot_username + ')</span>';
+            }
+        } else {
+            if (statusBadge) {
+                statusBadge.className = 'px-2 py-1 text-xs rounded-full bg-red-100 text-red-700';
+                statusBadge.textContent = '未运行';
+            }
+            if (botInfo) {
+                botInfo.innerHTML = '<span class="text-red-500">机器人未运行</span>';
+            }
+            if (statusEl) {
+                statusEl.innerHTML = '<span class="text-red-500"><i class="ri-close-circle-line mr-1"></i>未运行</span>';
+            }
+        }
+    } catch (e) {
+        const statusBadge = document.getElementById('botStatusBadge');
+        if (statusBadge) {
+            statusBadge.className = 'px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-500';
+            statusBadge.textContent = '检测失败';
+        }
+        const statusEl = document.getElementById('botStatus');
+        if (statusEl) {
+            statusEl.innerHTML = '<span class="text-red-500">检测失败</span>';
+        }
+    }
+}
+
+// 切换Token可见性
+function toggleTokenVisibility() {
+    const input = document.getElementById('botTokenInput');
+    const icon = document.getElementById('tokenEyeIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'ri-eye-off-line';
+    } else {
+        input.type = 'password';
+        icon.className = 'ri-eye-line';
+    }
+}
+
+// 页面加载时执行
+loadAdmins();
+checkBotStatus();
+setInterval(checkBotStatus, 30000);
+</script>
+{% endblock %}

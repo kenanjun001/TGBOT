@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+
+{% block title %}与 {{ target_user.display_name }} 对话 - TG 传话机器人{% endblock %}
+
+{% block content %}
+<div class="flex flex-col" style="height: calc(100vh - 64px);">
+    <!-- 顶部用户信息栏 -->
+    <div class="bg-white border-b px-4 py-3 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center">
+            <a href="/users" class="text-gray-500 hover:text-gray-700 mr-4">
+                <i class="ri-arrow-left-line text-xl"></i>
+            </a>
+            <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+                {% if target_user.source == 'web' %}
+                <i class="ri-global-line text-indigo-600"></i>
+                {% else %}
+                <i class="ri-telegram-line text-indigo-600"></i>
+                {% endif %}
+            </div>
+            <div>
+                <h3 class="font-semibold text-gray-800">
+                    {{ target_user.source_icon }} {{ target_user.display_name }}
+                </h3>
+                <p class="text-xs text-gray-500">
+                    {% if target_user.source == 'web' %}
+                    📧 {{ target_user.email }}
+                    {% else %}
+                    TG: {{ target_user.tg_id }}
+                    {% endif %}
+                    · 消息: {{ target_user.message_count }}
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            {% if target_user.tags %}
+            {% for tag in target_user.tags %}
+            <span class="px-2 py-1 bg-purple-100 text-purple-600 rounded text-xs">{{ tag }}</span>
+            {% endfor %}
+            {% endif %}
+            
+            {% if target_user.is_verified %}
+            <span class="px-2 py-1 bg-green-100 text-green-600 rounded text-xs">已验证</span>
+            {% endif %}
+            {% if target_user.is_blacklisted %}
+            <span class="px-2 py-1 bg-red-100 text-red-600 rounded text-xs">黑名单</span>
+            {% endif %}
+            {% if target_user.is_whitelisted %}
+            <span class="px-2 py-1 bg-blue-100 text-blue-600 rounded text-xs">白名单</span>
+            {% endif %}
+            
+            <button onclick="showNoteModal()" class="p-2 hover:bg-gray-100 rounded-lg" title="客户备注">
+                <i class="ri-sticky-note-line text-gray-600"></i>
+            </button>
+            
+            <div class="relative dropdown-container">
+                <button onclick="toggleDropdown()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <i class="ri-more-2-fill text-gray-600"></i>
+                </button>
+                <div id="dropdownMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-50">
+                    {% if not target_user.is_blacklisted %}
+                    <form method="POST" action="/users/{{ target_user.id }}/blacklist">
+                        <input type="hidden" name="action" value="add">
+                        <button type="submit" class="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 rounded-t-lg">
+                            <i class="ri-forbid-line mr-2"></i>加入黑名单
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="/users/{{ target_user.id }}/blacklist">
+                        <input type="hidden" name="action" value="remove">
+                        <button type="submit" class="w-full px-4 py-2 text-left text-green-600 hover:bg-green-50 rounded-t-lg">
+                            <i class="ri-checkbox-circle-line mr-2"></i>解除黑名单
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    {% if not target_user.is_whitelisted %}
+                    <form method="POST" action="/users/{{ target_user.id }}/whitelist">
+                        <input type="hidden" name="action" value="add">
+                        <button type="submit" class="w-full px-4 py-2 text-left text-blue-600 hover:bg-blue-50 rounded-b-lg">
+                            <i class="ri-shield-check-line mr-2"></i>加入白名单
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="/users/{{ target_user.id }}/whitelist">
+                        <input type="hidden" name="action" value="remove">
+                        <button type="submit" class="w-full px-4 py-2 text-left text-gray-600 hover:bg-gray-50 rounded-b-lg">
+                            <i class="ri-shield-line mr-2"></i>移除白名单
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 消息列表区域 -->
+    <div id="messageList" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+        {% for msg in messages %}
+        <div class="flex {% if msg.direction == 'out' %}justify-end{% else %}justify-start{% endif %}" data-msg-id="{{ msg.id }}">
+            <div class="max-w-[70%] {% if msg.direction == 'out' %}bg-indigo-500 text-white{% else %}bg-white{% endif %} rounded-2xl px-4 py-2 shadow-sm">
+                {% if msg.message_type == 'photo' %}
+                <p class="text-sm {% if msg.direction == 'out' %}text-indigo-200{% else %}text-gray-500{% endif %}">
+                    <i class="ri-image-line mr-1"></i>图片
+                </p>
+                {% elif msg.message_type == 'video' %}
+                <p class="text-sm {% if msg.direction == 'out' %}text-indigo-200{% else %}text-gray-500{% endif %}">
+                    <i class="ri-video-line mr-1"></i>视频
+                </p>
+                {% elif msg.message_type == 'document' %}
+                <p class="text-sm {% if msg.direction == 'out' %}text-indigo-200{% else %}text-gray-500{% endif %}">
+                    <i class="ri-file-line mr-1"></i>{{ msg.file_name or '文件' }}
+                </p>
+                {% elif msg.message_type == 'voice' %}
+                <p class="text-sm {% if msg.direction == 'out' %}text-indigo-200{% else %}text-gray-500{% endif %}">
+                    <i class="ri-mic-line mr-1"></i>语音消息
+                </p>
+                {% elif msg.message_type == 'sticker' %}
+                <p class="text-sm {% if msg.direction == 'out' %}text-indigo-200{% else %}text-gray-500{% endif %}">
+                    <i class="ri-emotion-line mr-1"></i>贴纸
+                </p>
+                {% endif %}
+                
+                {% if msg.content %}
+                <p class="break-words whitespace-pre-wrap">{{ msg.content }}</p>
+                {% endif %}
+                
+                <p class="text-xs {% if msg.direction == 'out' %}text-indigo-200{% else %}text-gray-400{% endif %} mt-1">
+                    {% if msg.direction == 'out' and msg.admin %}
+                    {{ msg.admin.display_name }} · 
+                    {% endif %}
+                    {{ msg.created_at.strftime('%H:%M') }}
+                </p>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center text-gray-400 py-8" id="emptyMessage">
+            <i class="ri-chat-3-line text-4xl mb-2 block"></i>
+            <p>暂无消息记录</p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- 快捷回复栏 -->
+    <div id="quickReplyBar" class="hidden bg-white border-t px-4 py-2 flex-shrink-0">
+        <div class="flex items-center space-x-2 overflow-x-auto">
+            <span class="text-xs text-gray-500 whitespace-nowrap">快捷回复:</span>
+            <div id="quickReplyList" class="flex space-x-2"></div>
+        </div>
+    </div>
+    
+    <!-- 表情选择器 -->
+    <div id="emojiPicker" class="hidden absolute bottom-24 left-4 bg-white rounded-lg shadow-xl border p-3 z-50 w-80">
+        <div class="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto" id="emojiGrid"></div>
+    </div>
+    
+    <!-- 输入框区域 -->
+    <div class="bg-white border-t p-4 flex-shrink-0">
+        <div class="flex items-center space-x-2">
+            <button type="button" onclick="toggleEmojiPicker()" class="p-2 hover:bg-gray-100 rounded-full" title="表情">
+                <i class="ri-emotion-happy-line text-gray-500 text-xl"></i>
+            </button>
+            
+            <button type="button" onclick="toggleQuickReply()" class="p-2 hover:bg-gray-100 rounded-full" title="快捷回复">
+                <i class="ri-flashlight-line text-gray-500 text-xl"></i>
+            </button>
+            
+            <label class="p-2 hover:bg-gray-100 rounded-full cursor-pointer" title="发送图片">
+                <i class="ri-image-add-line text-gray-500 text-xl"></i>
+                <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="uploadFile(this)">
+            </label>
+            
+            <form id="sendForm" class="flex-1 flex items-center space-x-2">
+                <input type="text" id="messageInput" 
+                       placeholder="输入消息..." 
+                       class="flex-1 px-4 py-3 border rounded-full focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                       autocomplete="off">
+                <button type="submit" class="px-6 py-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition">
+                    <i class="ri-send-plane-fill"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 客户备注弹窗 -->
+<div id="noteModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <i class="ri-sticky-note-line mr-2"></i>客户备注
+        </h3>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">标签（逗号分隔）</label>
+                <input type="text" id="tagsInput" 
+                       value="{{ target_user.tags | join(', ') if target_user.tags else '' }}"
+                       placeholder="VIP, 重要客户, 待跟进"
+                       class="w-full px-4 py-2 border rounded-lg">
+            </div>
+            <div class="flex space-x-3">
+                <button type="button" onclick="hideNoteModal()" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">取消</button>
+                <button type="button" onclick="saveNote()" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 消息提示音 - 叮咚 -->
+<audio id="notificationSound" preload="auto">
+    <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+</audio>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const emojis = ['😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊','😋','😎','😍','😘','🥰','😗','😙','🥲','😚','☺️','😌','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','😌','😔','😪','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','😤','😡','😠','👋','🤚','🖐️','✋','👌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤝','🙏','💪','❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','❣️','💕','💞','💓','💗','💖','💘','💝','✨','⭐','🌟','💫','🔥','💯','✅','❌','❓','❗','💬','💭','🎉','🎊','🎁','🏆','🥇','🥈','🥉'];
+let quickReplies = [];
+
+function toggleDropdown() {
+    document.getElementById('dropdownMenu').classList.toggle('hidden');
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown-container')) {
+        document.getElementById('dropdownMenu').classList.add('hidden');
+    }
+    if (!e.target.closest('#emojiPicker') && !e.target.closest('[onclick="toggleEmojiPicker()"]')) {
+        document.getElementById('emojiPicker').classList.add('hidden');
+    }
+});
+
+function toggleEmojiPicker() {
+    const picker = document.getElementById('emojiPicker');
+    picker.classList.toggle('hidden');
+    if (!picker.classList.contains('hidden') && document.getElementById('emojiGrid').children.length === 0) {
+        renderEmojis();
+    }
+}
+
+function renderEmojis() {
+    const grid = document.getElementById('emojiGrid');
+    grid.innerHTML = emojis.map(e => `<button type="button" onclick="insertEmoji('${e}')" class="w-8 h-8 text-xl hover:bg-gray-100 rounded">${e}</button>`).join('');
+}
+
+function insertEmoji(emoji) {
+    const input = document.getElementById('messageInput');
+    input.value += emoji;
+    input.focus();
+    document.getElementById('emojiPicker').classList.add('hidden');
+}
+
+function toggleQuickReply() {
+    const bar = document.getElementById('quickReplyBar');
+    bar.classList.toggle('hidden');
+    if (!bar.classList.contains('hidden') && quickReplies.length === 0) {
+        loadQuickReplies();
+    }
+}
+
+async function loadQuickReplies() {
+    try {
+        const response = await fetch('/api/quick-replies');
+        const data = await response.json();
+        quickReplies = data.replies || [];
+        renderQuickReplies();
+    } catch (e) {
+        console.error('加载快捷回复失败', e);
+    }
+}
+
+function renderQuickReplies() {
+    const list = document.getElementById('quickReplyList');
+    if (quickReplies.length === 0) {
+        list.innerHTML = '<span class="text-xs text-gray-400">暂无快捷回复</span>';
+        return;
+    }
+    list.innerHTML = quickReplies.map(r => 
+        `<button type="button" onclick="useQuickReply(\`${r.content.replace(/`/g, '\\`')}\`)" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-sm whitespace-nowrap">${r.title}</button>`
+    ).join('');
+}
+
+function useQuickReply(content) {
+    document.getElementById('messageInput').value = content;
+    document.getElementById('messageInput').focus();
+    document.getElementById('quickReplyBar').classList.add('hidden');
+}
+
+async function uploadFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('user_id', {{ target_user.id }});
+    
+    try {
+        const response = await fetch('/api/upload', { method: 'POST', body: formData });
+        const data = await response.json();
+        if (data.success) {
+            addMessageToUI({ id: Date.now(), direction: 'out', content: '[图片]', message_type: 'image', created_at: new Date().toISOString() });
+            scrollToBottom();
+        } else {
+            alert('上传失败：' + (data.error || data.detail));
+        }
+    } catch (e) {
+        alert('上传失败：' + e.message);
+    }
+    input.value = '';
+}
+
+function showNoteModal() {
+    document.getElementById('noteModal').classList.remove('hidden');
+    document.getElementById('noteModal').classList.add('flex');
+}
+
+function hideNoteModal() {
+    document.getElementById('noteModal').classList.add('hidden');
+    document.getElementById('noteModal').classList.remove('flex');
+}
+
+async function saveNote() {
+    const tags = document.getElementById('tagsInput').value;
+    try {
+        const response = await fetch('/users/{{ target_user.id }}/tags', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `tags=${encodeURIComponent(tags)}`
+        });
+        if (response.ok) {
+            hideNoteModal();
+            location.reload();
+        }
+    } catch (e) {
+        alert('保存失败');
+    }
+}
+
+function scrollToBottom() {
+    const messageList = document.getElementById('messageList');
+    messageList.scrollTop = messageList.scrollHeight;
+}
+
+window.onload = function() {
+    scrollToBottom();
+    renderEmojis();
+};
+
+function getLastMessageId() {
+    const messages = document.querySelectorAll('[data-msg-id]');
+    if (messages.length === 0) return 0;
+    return parseInt(messages[messages.length - 1].getAttribute('data-msg-id'));
+}
+
+let lastMessageId = getLastMessageId();
+
+function playNotificationSound() {
+    try {
+        const audio = document.getElementById('notificationSound');
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+    } catch (e) {}
+}
+
+document.getElementById('sendForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const input = document.getElementById('messageInput');
+    const content = input.value.trim();
+    if (!content) return;
+    
+    input.disabled = true;
+    try {
+        const response = await fetch('/api/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: {{ target_user.id }}, message: content })
+        });
+        const data = await response.json();
+        if (data.success) {
+            addMessageToUI({ id: Date.now(), direction: 'out', content: content, created_at: new Date().toISOString(), admin_name: '{{ user.username }}' });
+            input.value = '';
+            scrollToBottom();
+        } else {
+            alert('发送失败：' + (data.error || data.detail || '未知错误'));
+        }
+    } catch (error) {
+        alert('发送失败：' + error.message);
+    }
+    input.disabled = false;
+    input.focus();
+});
+
+function addMessageToUI(msg) {
+    const emptyMsg = document.getElementById('emptyMessage');
+    if (emptyMsg) emptyMsg.remove();
+    
+    const messageList = document.getElementById('messageList');
+    const div = document.createElement('div');
+    div.className = `flex ${msg.direction === 'out' ? 'justify-end' : 'justify-start'}`;
+    div.setAttribute('data-msg-id', msg.id);
+    
+    const time = new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    
+    if (msg.direction === 'out') {
+        div.innerHTML = `<div class="max-w-[70%] bg-indigo-500 text-white rounded-2xl px-4 py-2 shadow-sm"><p class="break-words whitespace-pre-wrap">${escapeHtml(msg.content)}</p><p class="text-xs text-indigo-200 mt-1">${msg.admin_name ? msg.admin_name + ' · ' : ''}${time}</p></div>`;
+    } else {
+        div.innerHTML = `<div class="max-w-[70%] bg-white rounded-2xl px-4 py-2 shadow-sm"><p class="break-words whitespace-pre-wrap">${escapeHtml(msg.content)}</p><p class="text-xs text-gray-400 mt-1">${time}</p></div>`;
+    }
+    messageList.appendChild(div);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// WebSocket 实时消息
+let ws = null;
+function connectWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat/{{ target_user.id }}`);
+    
+    ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        if (data.type === 'new_message') {
+            const msg = data.message;
+            if (!document.querySelector(`[data-msg-id="${msg.id}"]`)) {
+                addMessageToUI(msg);
+                lastMessageId = Math.max(lastMessageId, msg.id);
+                scrollToBottom();
+                if (msg.direction === 'in') playNotificationSound();
+            }
+        }
+    };
+    
+    ws.onclose = function() {
+        setTimeout(connectWebSocket, 3000);
+    };
+    
+    ws.onerror = function() {
+        // 回退到轮询
+        if (!window.pollingStarted) {
+            window.pollingStarted = true;
+            setInterval(pollMessages, 3000);
+        }
+    };
+}
+
+async function pollMessages() {
+    try {
+        const response = await fetch(`/api/messages/{{ target_user.id }}/new?last_id=${lastMessageId}`);
+        const data = await response.json();
+        if (data.messages && data.messages.length > 0) {
+            data.messages.forEach(msg => {
+                if (!document.querySelector(`[data-msg-id="${msg.id}"]`)) {
+                    addMessageToUI(msg);
+                    lastMessageId = Math.max(lastMessageId, msg.id);
+                    if (msg.direction === 'in') playNotificationSound();
+                }
+            });
+            scrollToBottom();
+        }
+    } catch (e) {}
+}
+
+// 尝试WebSocket，失败则轮询
+try { connectWebSocket(); } catch(e) { setInterval(pollMessages, 3000); }
+</script>
+{% endblock %}

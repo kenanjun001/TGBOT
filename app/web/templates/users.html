@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}用户管理 - TG 传话机器人{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">用户管理</h2>
+        <div class="flex space-x-3">
+            <a href="/api/users/export" class="px-4 py-2 border rounded-lg hover:bg-gray-50">
+                <i class="ri-download-line mr-2"></i>导出
+            </a>
+        </div>
+    </div>
+    
+    <!-- 搜索和筛选 -->
+    <div class="bg-white rounded-xl shadow p-4 mb-6">
+        <form method="GET" class="flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[200px]">
+                <input type="text" name="search" value="{{ search }}" 
+                       placeholder="搜索用户名、ID..."
+                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <select name="filter_verified" class="px-4 py-2 border rounded-lg">
+                <option value="">全部状态</option>
+                <option value="true" {% if filter_verified == 'true' %}selected{% endif %}>已验证</option>
+                <option value="false" {% if filter_verified == 'false' %}selected{% endif %}>未验证</option>
+            </select>
+            <select name="filter_blacklisted" class="px-4 py-2 border rounded-lg">
+                <option value="">全部用户</option>
+                <option value="true" {% if filter_blacklisted == 'true' %}selected{% endif %}>黑名单</option>
+                <option value="false" {% if filter_blacklisted == 'false' %}selected{% endif %}>正常</option>
+            </select>
+            <button type="submit" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                <i class="ri-search-line"></i>
+            </button>
+        </form>
+    </div>
+    
+    <!-- 用户列表 - 聊天列表样式 -->
+    <div class="bg-white rounded-xl shadow divide-y">
+        {% for u in users %}
+        <a href="/users/{{ u.id }}" class="flex items-center p-4 hover:bg-gray-50 transition">
+            <!-- 头像 -->
+            <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
+                <i class="ri-user-line text-indigo-600 text-xl"></i>
+            </div>
+            
+            <!-- 用户信息 -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-gray-800 truncate">{{ u.display_name }}</h3>
+                    <span class="text-xs text-gray-400 flex-shrink-0 ml-2">
+                        {{ u.last_message_at.strftime('%m-%d %H:%M') if u.last_message_at else u.created_at.strftime('%m-%d') }}
+                    </span>
+                </div>
+                <div class="flex items-center justify-between mt-1">
+                    <p class="text-sm text-gray-500 truncate">
+                        TG: {{ u.tg_id }}
+                        {% if u.last_message %}
+                        · {{ u.last_message[:30] }}{% if u.last_message|length > 30 %}...{% endif %}
+                        {% endif %}
+                    </p>
+                    <div class="flex items-center space-x-1 flex-shrink-0 ml-2">
+                        {% if u.is_blacklisted %}
+                        <span class="w-2 h-2 bg-red-500 rounded-full" title="黑名单"></span>
+                        {% elif u.is_whitelisted %}
+                        <span class="w-2 h-2 bg-green-500 rounded-full" title="白名单"></span>
+                        {% elif u.is_verified %}
+                        <span class="w-2 h-2 bg-blue-500 rounded-full" title="已验证"></span>
+                        {% else %}
+                        <span class="w-2 h-2 bg-gray-300 rounded-full" title="未验证"></span>
+                        {% endif %}
+                        
+                        {% if u.message_count > 0 %}
+                        <span class="px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full text-xs">
+                            {{ u.message_count }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 箭头 -->
+            <i class="ri-arrow-right-s-line text-gray-300 ml-2"></i>
+        </a>
+        {% else %}
+        <div class="p-8 text-center text-gray-500">
+            <i class="ri-user-line text-4xl mb-2 block"></i>
+            <p>暂无用户</p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- 分页 -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-between mt-6">
+        <p class="text-gray-500 text-sm">共 {{ total }} 位用户</p>
+        <div class="flex space-x-2">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}&search={{ search }}&filter_verified={{ filter_verified }}&filter_blacklisted={{ filter_blacklisted }}" 
+               class="px-4 py-2 border rounded-lg hover:bg-gray-50 text-sm">上一页</a>
+            {% endif %}
+            
+            <span class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">{{ page }} / {{ total_pages }}</span>
+            
+            {% if page < total_pages %}
+            <a href="?page={{ page + 1 }}&search={{ search }}&filter_verified={{ filter_verified }}&filter_blacklisted={{ filter_blacklisted }}" 
+               class="px-4 py-2 border rounded-lg hover:bg-gray-50 text-sm">下一页</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

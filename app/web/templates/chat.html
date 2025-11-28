@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>在线客服</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { height: 100%; }
+        body { 
+            height: 100%; 
+            overflow: hidden; 
+            background: #f0f0f0;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+        }
+        .app {
+            height: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            display: flex;
+            flex-direction: column;
+        }
+        .header { flex-shrink: 0; background: white; border-bottom: 1px solid #e5e5e5; padding: 12px 16px; }
+        .content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .footer { flex-shrink: 0; background: white; border-top: 1px solid #e5e5e5; padding: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+        .message-bubble { max-width: 75%; word-wrap: break-word; }
+        @media (min-width: 500px) {
+            body { background: #e5e5e5; padding: 20px 0; }
+            .app { height: calc(100% - 40px); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); overflow: hidden; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- 头部 -->
+        <div class="header">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+                        <i class="ri-customer-service-2-line text-xl text-indigo-600"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-gray-800">在线客服</h1>
+                        <p class="text-xs text-gray-500">
+                            <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>在线
+                        </p>
+                    </div>
+                </div>
+                <button onclick="showEndChatModal()" id="endChatBtn" class="hidden px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600">
+                    结束会话
+                </button>
+            </div>
+        </div>
+        
+        <!-- 邮箱输入界面 -->
+        <div id="emailForm" class="content flex flex-col items-center justify-center p-6">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="ri-mail-line text-3xl text-indigo-600"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-800 mb-2">欢迎咨询</h2>
+                <p class="text-gray-500 text-sm">请输入邮箱开始对话</p>
+            </div>
+            <div class="w-full max-w-xs">
+                <input type="email" id="emailInput" placeholder="your@email.com"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none text-center"
+                       onkeypress="if(event.key==='Enter')startChat()">
+                <button onclick="startChat()" class="w-full mt-3 px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
+                    开始对话
+                </button>
+            </div>
+        </div>
+        
+        <!-- 聊天界面 -->
+        <div id="chatInterface" class="hidden" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+            <div id="messageList" class="content p-4 space-y-3">
+                <div class="flex justify-start">
+                    <div class="message-bubble bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-2">
+                        <p class="text-gray-800">您好！有什么可以帮您的吗？ 😊</p>
+                        <p class="text-xs text-gray-400 mt-1">客服</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 表情选择器 -->
+            <div id="emojiPicker" class="hidden" style="flex-shrink:0;background:white;border-top:1px solid #e5e5e5;padding:8px 16px;">
+                <div class="grid grid-cols-10 gap-1 max-h-28 overflow-y-auto" id="emojiGrid"></div>
+            </div>
+            
+            <!-- 输入区域 -->
+            <div class="footer">
+                <div class="flex items-center space-x-2">
+                    <button onclick="toggleEmojiPicker()" class="p-2 hover:bg-gray-100 rounded-full flex-shrink-0">
+                        <i class="ri-emotion-happy-line text-gray-500 text-xl"></i>
+                    </button>
+                    <label class="p-2 hover:bg-gray-100 rounded-full cursor-pointer flex-shrink-0">
+                        <i class="ri-image-add-line text-gray-500 text-xl"></i>
+                        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="uploadImage(this)">
+                    </label>
+                    <input type="text" id="messageInput" placeholder="输入消息..."
+                           class="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-full focus:border-indigo-500 focus:outline-none text-sm"
+                           onkeypress="if(event.key==='Enter')sendMessage()">
+                    <button onclick="sendMessage()" class="w-10 h-10 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 flex items-center justify-center flex-shrink-0">
+                        <i class="ri-send-plane-fill"></i>
+                    </button>
+                </div>
+                <p class="text-xs text-gray-400 text-center mt-2" id="emailDisplay"></p>
+            </div>
+        </div>
+        
+        <!-- 会话已结束界面 -->
+        <div id="endedInterface" class="hidden content flex flex-col items-center justify-center p-6">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="ri-check-line text-3xl text-green-600"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-800 mb-2">会话已结束</h2>
+                <p class="text-gray-500 text-sm mb-4">感谢您的咨询！</p>
+                <button onclick="startNewChat()" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                    开始新对话
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结束会话+评分弹窗 -->
+    <div id="endChatModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm">
+            <h3 class="text-lg font-bold text-center mb-2">结束会话</h3>
+            <p class="text-gray-500 text-sm text-center mb-4">请为本次服务评分</p>
+            <div class="flex justify-center space-x-2 mb-4" id="starRating">
+                <button onclick="setRating(1)" class="text-3xl text-gray-300 hover:text-yellow-400">★</button>
+                <button onclick="setRating(2)" class="text-3xl text-gray-300 hover:text-yellow-400">★</button>
+                <button onclick="setRating(3)" class="text-3xl text-gray-300 hover:text-yellow-400">★</button>
+                <button onclick="setRating(4)" class="text-3xl text-gray-300 hover:text-yellow-400">★</button>
+                <button onclick="setRating(5)" class="text-3xl text-gray-300 hover:text-yellow-400">★</button>
+            </div>
+            <textarea id="ratingComment" rows="3" placeholder="您的建议（可选）" class="w-full px-4 py-2 border rounded-lg mb-4"></textarea>
+            <div class="flex space-x-3">
+                <button onclick="hideEndChatModal()" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">取消</button>
+                <button onclick="endChatWithRating()" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">提交并结束</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示音 -->
+    <audio id="notificationSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const emojis = ['😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊','😋','😎','😍','😘','🥰','☺️','😌','😛','😜','🤪','😝','🤗','🤭','🤔','😐','😏','🙄','😔','😪','😴','😷','🥵','🥶','😵','🤯','🥳','🤓','😕','😟','🙁','☹️','😮','😲','😳','🥺','😢','😭','😱','😤','😡','👋','👌','✌️','🤞','👍','👎','👏','🙌','🤝','🙏','💪','❤️','💔','✨','🔥','💯','✅','❌'];
+        let sessionToken = null;
+        let lastMessageId = 0;
+        let pollInterval = null;
+        let currentRating = 0;
+
+        // 恢复会话
+        const savedSession = localStorage.getItem('chat_session');
+        if (savedSession) {
+            try {
+                const session = JSON.parse(savedSession);
+                if (session.ended) {
+                    showEndedInterface();
+                } else {
+                    sessionToken = session.token;
+                    document.getElementById('emailDisplay').textContent = session.email;
+                    showChatInterface();
+                    loadHistory();
+                }
+            } catch (e) {
+                localStorage.removeItem('chat_session');
+            }
+        }
+
+        // 渲染表情
+        document.getElementById('emojiGrid').innerHTML = emojis.map(e => 
+            `<button onclick="insertEmoji('${e}')" class="w-7 h-7 text-lg hover:bg-gray-100 rounded">${e}</button>`
+        ).join('');
+
+        function toggleEmojiPicker() {
+            document.getElementById('emojiPicker').classList.toggle('hidden');
+        }
+
+        function insertEmoji(emoji) {
+            document.getElementById('messageInput').value += emoji;
+            document.getElementById('messageInput').focus();
+            document.getElementById('emojiPicker').classList.add('hidden');
+        }
+
+        async function startChat() {
+            const email = document.getElementById('emailInput').value.trim();
+            if (!email) { alert('请输入邮箱'); return; }
+
+            try {
+                const response = await fetch('/chat/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await response.json();
+                if (!response.ok) { alert(data.detail || '开始对话失败'); return; }
+
+                sessionToken = data.session_token;
+                localStorage.setItem('chat_session', JSON.stringify({ token: sessionToken, email, ended: false }));
+                document.getElementById('emailDisplay').textContent = email;
+                showChatInterface();
+                loadHistory();
+            } catch (e) {
+                alert('网络错误，请重试');
+            }
+        }
+
+        function showChatInterface() {
+            document.getElementById('emailForm').classList.add('hidden');
+            document.getElementById('emailForm').style.display = 'none';
+            document.getElementById('endedInterface').classList.add('hidden');
+            document.getElementById('endedInterface').style.display = 'none';
+            document.getElementById('chatInterface').classList.remove('hidden');
+            document.getElementById('chatInterface').style.display = 'flex';
+            document.getElementById('endChatBtn').classList.remove('hidden');
+            if (pollInterval) clearInterval(pollInterval);
+            pollInterval = setInterval(pollMessages, 3000);
+            setTimeout(scrollToBottom, 100);
+        }
+
+        function showEndedInterface() {
+            document.getElementById('emailForm').classList.add('hidden');
+            document.getElementById('emailForm').style.display = 'none';
+            document.getElementById('chatInterface').classList.add('hidden');
+            document.getElementById('chatInterface').style.display = 'none';
+            document.getElementById('endedInterface').classList.remove('hidden');
+            document.getElementById('endedInterface').style.display = 'flex';
+            document.getElementById('endChatBtn').classList.add('hidden');
+            if (pollInterval) clearInterval(pollInterval);
+        }
+
+        function startNewChat() {
+            localStorage.removeItem('chat_session');
+            sessionToken = null;
+            lastMessageId = 0;
+            document.getElementById('emailInput').value = '';
+            document.getElementById('messageList').innerHTML = `
+                <div class="flex justify-start">
+                    <div class="message-bubble bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-2">
+                        <p class="text-gray-800">您好！有什么可以帮您的吗？ 😊</p>
+                        <p class="text-xs text-gray-400 mt-1">客服</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('endedInterface').classList.add('hidden');
+            document.getElementById('endedInterface').style.display = 'none';
+            document.getElementById('emailForm').classList.remove('hidden');
+            document.getElementById('emailForm').style.display = 'flex';
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch(`/chat/history/${sessionToken}`);
+                const data = await response.json();
+                if (data.success && data.messages) {
+                    // 清空默认消息
+                    document.getElementById('messageList').innerHTML = '';
+                    data.messages.forEach(msg => {
+                        addMessageToUI(msg);
+                        if (msg.id > lastMessageId) lastMessageId = msg.id;
+                    });
+                    scrollToBottom();
+                }
+            } catch (e) {}
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (!message || !sessionToken) return;
+
+            input.disabled = true;
+            addMessageToUI({ direction: 'in', content: message, created_at: new Date().toISOString() });
+            scrollToBottom();
+            input.value = '';
+
+            try {
+                const response = await fetch('/chat/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_token: sessionToken, message })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    if (response.status === 401) { localStorage.removeItem('chat_session'); location.reload(); return; }
+                }
+                if (data.message_id > lastMessageId) lastMessageId = data.message_id;
+            } catch (e) {}
+
+            input.disabled = false;
+            input.focus();
+        }
+
+        async function uploadImage(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('session_token', sessionToken);
+            try {
+                const response = await fetch('/chat/upload', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) {
+                    addMessageToUI({ direction: 'in', content: '[图片]', created_at: new Date().toISOString() });
+                    scrollToBottom();
+                }
+            } catch (e) {}
+            input.value = '';
+        }
+
+        async function pollMessages() {
+            if (!sessionToken) return;
+            try {
+                const response = await fetch('/chat/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_token: sessionToken, last_id: lastMessageId })
+                });
+                const data = await response.json();
+                if (data.success && data.messages) {
+                    data.messages.forEach(msg => {
+                        if (msg.direction === 'out' && msg.id > lastMessageId) {
+                            addMessageToUI(msg);
+                            lastMessageId = msg.id;
+                            playSound();
+                        }
+                    });
+                    scrollToBottom();
+                }
+            } catch (e) {}
+        }
+
+        function addMessageToUI(msg) {
+            const list = document.getElementById('messageList');
+            const div = document.createElement('div');
+            div.className = `flex ${msg.direction === 'in' ? 'justify-end' : 'justify-start'}`;
+            const time = new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+            if (msg.direction === 'in') {
+                div.innerHTML = `<div class="message-bubble bg-indigo-600 text-white rounded-2xl rounded-tr-sm px-4 py-2"><p class="whitespace-pre-wrap text-sm">${escapeHtml(msg.content)}</p><p class="text-xs text-indigo-200 mt-1 text-right">${time}</p></div>`;
+            } else {
+                // 显示客服名字
+                const adminName = msg.admin_name || '客服';
+                div.innerHTML = `<div class="message-bubble bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-2"><p class="text-gray-800 whitespace-pre-wrap text-sm">${escapeHtml(msg.content)}</p><p class="text-xs text-gray-400 mt-1">${adminName} · ${time}</p></div>`;
+            }
+            list.appendChild(div);
+        }
+
+        function scrollToBottom() {
+            const list = document.getElementById('messageList');
+            list.scrollTop = list.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function playSound() {
+            try { document.getElementById('notificationSound').play().catch(() => {}); } catch (e) {}
+        }
+
+        // 结束会话
+        function showEndChatModal() {
+            document.getElementById('endChatModal').classList.remove('hidden');
+            document.getElementById('endChatModal').classList.add('flex');
+        }
+
+        function hideEndChatModal() {
+            document.getElementById('endChatModal').classList.add('hidden');
+            document.getElementById('endChatModal').classList.remove('flex');
+        }
+
+        function setRating(rating) {
+            currentRating = rating;
+            document.querySelectorAll('#starRating button').forEach((btn, i) => {
+                btn.classList.toggle('text-yellow-400', i < rating);
+                btn.classList.toggle('text-gray-300', i >= rating);
+            });
+        }
+
+        async function endChatWithRating() {
+            if (currentRating === 0) { alert('请选择评分'); return; }
+            
+            try {
+                const response = await fetch('/api/rating', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        session_token: sessionToken, 
+                        rating: currentRating, 
+                        comment: document.getElementById('ratingComment').value.trim() 
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    // 标记会话已结束
+                    const session = JSON.parse(localStorage.getItem('chat_session'));
+                    session.ended = true;
+                    localStorage.setItem('chat_session', JSON.stringify(session));
+                    
+                    hideEndChatModal();
+                    showEndedInterface();
+                }
+            } catch (e) {
+                alert('提交失败');
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#emojiPicker') && !e.target.closest('[onclick="toggleEmojiPicker()"]')) {
+                document.getElementById('emojiPicker').classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

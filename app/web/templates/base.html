@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TG 传话机器人{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .sidebar-link.active {
+            background-color: rgb(79 70 229);
+            color: white;
+        }
+        .sidebar-link:hover:not(.active) {
+            background-color: rgb(238 242 255);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-100 min-h-screen">
+    {% block body %}
+    <div class="flex h-screen">
+        <!-- 侧边栏 -->
+        <aside class="w-64 bg-white shadow-lg flex flex-col">
+            <div class="p-4 border-b">
+                <h1 class="text-xl font-bold text-indigo-600">
+                    <i class="ri-robot-line mr-2"></i>TG 传话机器人
+                </h1>
+            </div>
+            
+            <nav class="flex-1 p-4 space-y-2">
+                <a href="/dashboard" class="sidebar-link flex items-center px-4 py-2 rounded-lg {% if active_page == 'dashboard' %}active{% endif %}">
+                    <i class="ri-dashboard-line mr-3"></i>仪表盘
+                </a>
+                <a href="/users" class="sidebar-link flex items-center px-4 py-2 rounded-lg {% if active_page == 'users' %}active{% endif %}">
+                    <i class="ri-user-line mr-3"></i>用户管理
+                </a>
+                <a href="/messages" class="sidebar-link flex items-center px-4 py-2 rounded-lg {% if active_page == 'messages' %}active{% endif %}">
+                    <i class="ri-message-3-line mr-3"></i>消息记录
+                </a>
+                <a href="/settings" class="sidebar-link flex items-center px-4 py-2 rounded-lg {% if active_page == 'settings' %}active{% endif %}">
+                    <i class="ri-settings-3-line mr-3"></i>设置
+                </a>
+            </nav>
+            
+            <div class="p-4 border-t">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">
+                        <i class="ri-user-3-line mr-1"></i>{{ user.username }}
+                    </span>
+                    <a href="/logout" class="text-sm text-red-500 hover:text-red-700">
+                        <i class="ri-logout-box-line"></i> 退出
+                    </a>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- 主内容区 -->
+        <main class="flex-1 overflow-auto">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    {% endblock %}
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}消息记录 - TG 传话机器人{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">消息记录</h2>
+        <div class="flex space-x-3">
+            <a href="/messages/quick-replies" class="px-4 py-2 border rounded-lg hover:bg-gray-50">
+                <i class="ri-flashlight-line mr-2"></i>快捷回复
+            </a>
+            <a href="/messages/export" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                <i class="ri-download-line mr-2"></i>导出
+            </a>
+        </div>
+    </div>
+    
+    <!-- 筛选器 -->
+    <div class="bg-white rounded-xl shadow p-4 mb-6">
+        <form method="GET" class="flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm text-gray-600 mb-1">搜索内容</label>
+                <input type="text" name="search" value="{{ search }}" 
+                       placeholder="搜索消息内容..."
+                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">方向</label>
+                <select name="direction" class="px-4 py-2 border rounded-lg">
+                    <option value="">全部</option>
+                    <option value="in" {% if filter_direction == 'in' %}selected{% endif %}>收到</option>
+                    <option value="out" {% if filter_direction == 'out' %}selected{% endif %}>发出</option>
+                </select>
+            </div>
+            <button type="submit" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                <i class="ri-search-line mr-2"></i>筛选
+            </button>
+        </form>
+    </div>
+    
+    <!-- 消息列表 -->
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">用户</th>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">方向</th>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">类型</th>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">内容</th>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">时间</th>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">操作</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for msg in messages %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <a href="/users/{{ msg.user.id }}" class="flex items-center hover:text-indigo-600">
+                            <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-2">
+                                <i class="ri-user-line text-indigo-600 text-sm"></i>
+                            </div>
+                            <span>{{ msg.user.display_name }}</span>
+                        </a>
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if msg.direction == 'in' %}
+                        <span class="px-2 py-1 bg-blue-100 text-blue-600 rounded-full text-xs">收到</span>
+                        {% else %}
+                        <span class="px-2 py-1 bg-green-100 text-green-600 rounded-full text-xs">发出</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-gray-600">
+                        {% if msg.message_type == 'text' %}
+                        <i class="ri-chat-1-line mr-1"></i>文字
+                        {% elif msg.message_type == 'photo' %}
+                        <i class="ri-image-line mr-1"></i>图片
+                        {% elif msg.message_type == 'video' %}
+                        <i class="ri-video-line mr-1"></i>视频
+                        {% elif msg.message_type == 'document' %}
+                        <i class="ri-file-line mr-1"></i>文件
+                        {% elif msg.message_type == 'voice' %}
+                        <i class="ri-mic-line mr-1"></i>语音
+                        {% elif msg.message_type == 'sticker' %}
+                        <i class="ri-emotion-line mr-1"></i>贴纸
+                        {% else %}
+                        {{ msg.message_type }}
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-gray-600 max-w-md">
+                        <p class="truncate">{{ msg.content or '[无文本内容]' }}</p>
+                        {% if msg.triggered_sensitive %}
+                        <span class="text-xs text-red-500">⚠️ {{ msg.sensitive_words | join(', ') }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-gray-500 text-sm">{{ msg.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td class="px-6 py-4">
+                        <button onclick="toggleImportant({{ msg.id }})" 
+                                class="text-yellow-500 hover:text-yellow-600 mr-2"
+                                title="标记重要">
+                            <i class="ri-star-{% if msg.is_important %}fill{% else %}line{% endif %}"></i>
+                        </button>
+                        <a href="/users/{{ msg.user.id }}" class="text-indigo-600 hover:text-indigo-800">
+                            <i class="ri-eye-line"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">暂无消息记录</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- 分页 -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-between mt-6">
+        <p class="text-gray-500">共 {{ total }} 条记录</p>
+        <div class="flex space-x-2">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}&search={{ search }}&direction={{ filter_direction }}" 
+               class="px-4 py-2 border rounded-lg hover:bg-gray-50">上一页</a>
+            {% endif %}
+            
+            <span class="px-4 py-2 bg-indigo-600 text-white rounded-lg">{{ page }}</span>
+            
+            {% if page < total_pages %}
+            <a href="?page={{ page + 1 }}&search={{ search }}&direction={{ filter_direction }}" 
+               class="px-4 py-2 border rounded-lg hover:bg-gray-50">下一页</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function toggleImportant(messageId) {
+    try {
+        const response = await fetch(`/messages/${messageId}/important`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        }
+    } catch (e) {
+        alert('操作失败');
+    }
+}
+</script>
+{% endblock %}
